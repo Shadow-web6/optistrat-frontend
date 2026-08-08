@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@theme {
+  /* Bleu marine — couleur structurelle (sidebar, en-têtes, textes de marque) */
+  --color-navy-50: #EAF1F8;
+  --color-navy-100: #CDE0EF;
+  --color-navy-200: #9CC0DE;
+  --color-navy-500: #0F5390;
+  --color-navy-600: #0A3B72;
+  --color-navy-700: #043872;
+  --color-navy-800: #062B57;
+  --color-navy-900: #021D3D;
+
+  /* Orange — couleur d'action (boutons, liens, CTA) */
+  --color-brand-50: #FFF3E5;
+  --color-brand-100: #FFE1BF;
+  --color-brand-200: #FFC685;
+  --color-brand-500: #FFA733;
+  --color-brand-600: #F6921E;
+  --color-brand-700: #D6790E;
+  --color-brand-800: #A85F0B;
+  --color-brand-900: #8C4E06;
+
+  /* Turquoise — accent secondaire (graphiques, highlights) */
+  --color-teal-50: #E3F7FA;
+  --color-teal-100: #B8ECF2;
+  --color-teal-200: #7FDCE8;
+  --color-teal-500: #12B8D1;
+  --color-teal-600: #00A0B7;
+  --color-teal-700: #00808F;
+  --color-teal-800: #00636E;
+  --color-teal-900: #004F58;
+
+  --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  @apply bg-slate-50 text-slate-800;
+}
