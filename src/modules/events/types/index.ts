@@ -5,6 +5,7 @@ export interface AppEvent {
   location: string | null
   start_at: string
   end_at: string | null
+  is_cancelled: boolean
   registrations_count: number
   is_registered: boolean
 }

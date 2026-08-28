@@ -9,6 +9,7 @@ export interface Course {
   title: string
   description: string | null
   duration_hours: number | null
+  is_active: boolean
   enrollments_count: number
   enrollments: Enrollment[]
 }

@@ -32,9 +32,18 @@ export const gedApi = {
     return data.data
   },
 
-  createCategory: async (name: string) => {
+    createCategory: async (name: string) => {
     const { data } = await api.post<{ data: DocumentCategory }>('/ged/categories', { name })
     return data.data
+  },
+
+  updateCategory: async (id: number, name: string) => {
+    const { data } = await api.patch<{ data: DocumentCategory }>(`/ged/categories/${id}`, { name })
+    return data.data
+  },
+
+  deleteCategory: async (id: number) => {
+    await api.delete(`/ged/categories/${id}`)
   },
 
   toggleFavorite: async (documentId: number) => {

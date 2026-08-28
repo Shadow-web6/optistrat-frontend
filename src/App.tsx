@@ -3,6 +3,7 @@ import { AppLayout } from '@/shared/components/AppLayout'
 import { ClientPortalLayout } from '@/shared/components/ClientPortalLayout'
 import { ProtectedRoute } from '@/shared/components/ProtectedRoute'
 import { useAuthStore } from '@/modules/auth/api/useAuthStore'
+import { useEffect } from 'react'
 
 import LoginPage from '@/modules/auth/pages/LoginPage'
 import DashboardPage from '@/modules/dashboard/pages/DashboardPage'
@@ -25,10 +26,25 @@ import MyRequestsPage from '@/modules/portal/pages/MyRequestsPage'
 import ChangePasswordPage from '@/modules/auth/pages/ChangePasswordPage'
 import UsersPage from '@/modules/users/pages/UsersPage'
 import PipelinePage from '@/modules/crm/pages/PipelinePage'
+import PortalDiagnosticRunPage from '@/modules/portal/pages/PortalDiagnosticRunPage'
 
 export default function App() {
   const user = useAuthStore((s) => s.user)
   const isClient = user?.role === 'client'
+  const isInitializing = useAuthStore((s) => s.isInitializing)
+  const bootstrap = useAuthStore((s) => s.bootstrap)
+
+  useEffect(() => {
+    bootstrap()
+  }, [bootstrap])
+
+  if (isInitializing) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">
+        Chargement…
+      </div>
+    )
+  }
 
   return (
     <Routes>
@@ -51,6 +67,7 @@ export default function App() {
         }
       >
         <Route path="/mon-espace" element={<MyDiagnosticsPage />} />
+        <Route path="/mon-espace/diagnostics/:id" element={<PortalDiagnosticRunPage />} />
         <Route path="/mon-espace/documents" element={<MyDocumentsPage />} />
         <Route path="/mon-espace/projets" element={<MyProjectsPage />} />
         <Route path="/mon-espace/demandes" element={<MyRequestsPage />} />

@@ -16,9 +16,23 @@ export const hrApi = {
     return data.data
   },
 
-  listSkills: async () => {
+    listSkills: async () => {
     const { data } = await api.get<{ data: Skill[] }>('/hr/skills')
     return data.data
+  },
+
+  createSkill: async (payload: { name: string; category?: string }) => {
+    const { data } = await api.post<{ data: Skill }>('/hr/skills', payload)
+    return data.data
+  },
+
+  updateSkill: async (id: number, payload: Partial<{ name: string; category: string | null }>) => {
+    const { data } = await api.patch<{ data: Skill }>(`/hr/skills/${id}`, payload)
+    return data.data
+  },
+
+  deleteSkill: async (id: number) => {
+    await api.delete(`/hr/skills/${id}`)
   },
 
   addObjective: async (

@@ -7,7 +7,11 @@ interface Props {
 }
 
 export function ProtectedRoute({ children, requiredPermission }: Props) {
-  const { isAuthenticated, hasPermission } = useAuthStore()
+  const { isAuthenticated, isInitializing, hasPermission } = useAuthStore()
+
+  if (isInitializing) {
+    return null
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />

@@ -11,3 +11,10 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "start": "npx serve -s dist -l ${PORT:-3000}"
+  },

@@ -40,8 +40,17 @@ export const osdApi = {
     return data.data
   },
 
-  downloadPdfUrl: (diagnosticId: number) => {
-    const base = api.defaults.baseURL
-    return `${base}/osd/diagnostics/${diagnosticId}/pdf`
-  },
+    downloadDiagnosticPdf: async (diagnosticId: number, filename: string, viaPortal = false) => {
+      const url = viaPortal
+        ? `/portal/diagnostics/${diagnosticId}/pdf`
+        : `/osd/diagnostics/${diagnosticId}/pdf`
+
+      const response = await api.get(url, { responseType: 'blob' })
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = filename
+      link.click()
+      window.URL.revokeObjectURL(blobUrl)
+    },
 }

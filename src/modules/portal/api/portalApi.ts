@@ -44,4 +44,32 @@ export const portalApi = {
     return data.data
   },
 
+    listActiveQuestionnaires: async () => {
+    const { data } = await api.get('/portal/diagnostics/questionnaires')
+    return data.data
+  },
+
+  getQuestionnaire: async (id: number) => {
+    const { data } = await api.get(`/portal/diagnostics/questionnaires/${id}`)
+    return data.data
+  },
+
+  startDiagnostic: async (questionnaireId: number) => {
+    const { data } = await api.post('/portal/diagnostics/start', { questionnaire_id: questionnaireId })
+    return data.data
+  },
+
+  getMyDiagnostic: async (id: number) => {
+    const { data } = await api.get(`/portal/diagnostics/${id}`)
+    return data.data
+  },
+
+  submitMyDiagnostic: async (
+    diagnosticId: number,
+    answers: { question_id: number; question_option_id?: number; score_value: number }[]
+  ) => {
+    const { data } = await api.post(`/portal/diagnostics/${diagnosticId}/submit`, { answers })
+    return data.data
+  },
+
 }

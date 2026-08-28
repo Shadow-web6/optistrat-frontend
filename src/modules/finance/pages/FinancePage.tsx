@@ -3,13 +3,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { financeApi } from '../api/financeApi'
 import { crmApi } from '@/modules/crm/api/crmApi'
 import { projectsApi } from '@/modules/projects/api/projectsApi'
+import type { Expense } from '../types'
 
 const STATUS_LABEL: Record<string, string> = {
-  draft: 'Brouillon', sent: 'Envoyée', paid: 'Payée', overdue: 'En retard',
+  draft: 'Brouillon', sent: 'Envoyée', paid: 'Payée', overdue: 'En retard', cancelled: 'Annulée',
 }
 const STATUS_COLOR: Record<string, string> = {
   draft: 'bg-slate-100 text-slate-600', sent: 'bg-amber-50 text-amber-700',
   paid: 'bg-emerald-50 text-emerald-700', overdue: 'bg-red-50 text-red-700',
+  cancelled: 'bg-red-100 text-red-500 line-through',
 }
 
 export default function FinancePage() {
@@ -17,6 +19,8 @@ export default function FinancePage() {
   const [tab, setTab] = useState<'invoices' | 'expenses'>('invoices')
   const [showInvoiceForm, setShowInvoiceForm] = useState(false)
   const [showExpenseForm, setShowExpenseForm] = useState(false)
+  const [editingExpenseId, setEditingExpenseId] = useState<number | null>(null)
+  const [editExpenseForm, setEditExpenseForm] = useState({ category: '', description: '', amount: '', expense_date: '' })
 
   const [invoiceForm, setInvoiceForm] = useState({
     invoice_number: '', amount: '', issue_date: '', client_id: '', project_id: '',
@@ -40,6 +44,11 @@ export default function FinancePage() {
 
   const markPaidMutation = useMutation({
     mutationFn: (id: number) => financeApi.markPaid(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['finance', 'invoices'] }),
+  })
+
+  const cancelInvoiceMutation = useMutation({
+    mutationFn: (id: number) => financeApi.cancelInvoice(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['finance', 'invoices'] }),
   })
 
@@ -73,7 +82,41 @@ export default function FinancePage() {
     },
   })
 
-  const totalInvoiced = invoices?.reduce((sum, i) => sum + i.amount, 0) ?? 0
+  const updateExpenseMutation = useMutation({
+    mutationFn: (id: number) => financeApi.updateExpense(id, {
+      category: editExpenseForm.category,
+      description: editExpenseForm.description || null,
+      amount: Number(editExpenseForm.amount),
+      expense_date: editExpenseForm.expense_date,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finance', 'expenses'] })
+      setEditingExpenseId(null)
+    },
+  })
+
+  const deleteExpenseMutation = useMutation({
+    mutationFn: (id: number) => financeApi.deleteExpense(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['finance', 'expenses'] }),
+  })
+
+  function startEditExpense(e: Expense) {
+    setEditingExpenseId(e.id)
+    setEditExpenseForm({
+      category: e.category,
+      description: e.description ?? '',
+      amount: String(e.amount),
+      expense_date: e.expense_date,
+    })
+  }
+
+  function confirmDeleteExpense(id: number) {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette dépense ? Cette action est irréversible.')) {
+      deleteExpenseMutation.mutate(id)
+    }
+  }
+
+  const totalInvoiced = invoices?.filter((i) => i.status !== 'cancelled').reduce((sum, i) => sum + i.amount, 0) ?? 0
   const totalPaid = invoices?.filter((i) => i.status === 'paid').reduce((sum, i) => sum + i.amount, 0) ?? 0
   const totalExpenses = expenses?.reduce((sum, e) => sum + e.amount, 0) ?? 0
 
@@ -164,7 +207,7 @@ export default function FinancePage() {
           {loadingInvoices ? <p className="p-5 text-sm text-slate-500">Chargement…</p> : invoices && invoices.length > 0 ? (
             <table className="w-full text-sm">
               <thead><tr className="border-b border-slate-100 text-left text-xs uppercase text-slate-400">
-                <th className="px-5 py-2">N°</th><th className="px-5 py-2">Client</th><th className="px-5 py-2">Montant</th><th className="px-5 py-2">Statut</th><th className="px-5 py-2"></th>
+                <th className="px-5 py-2">N°</th><th className="px-5 py-2">Client</th><th className="px-5 py-2">Montant</th><th className="px-5 py-2">Statut</th><th className="px-5 py-2 text-right">Actions</th>
               </tr></thead>
               <tbody>
                 {invoices.map((inv) => (
@@ -173,7 +216,23 @@ export default function FinancePage() {
                     <td className="px-5 py-3 text-slate-500">{inv.client?.name ?? '—'}</td>
                     <td className="px-5 py-3">{inv.amount.toLocaleString('fr-FR')} €</td>
                     <td className="px-5 py-3"><span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_COLOR[inv.status]}`}>{STATUS_LABEL[inv.status]}</span></td>
-                    <td className="px-5 py-3">{inv.status !== 'paid' && <button onClick={() => markPaidMutation.mutate(inv.id)} className="text-brand-600 hover:underline">Marquer payée</button>}</td>
+                    <td className="px-5 py-3 text-right space-x-3">
+                      {inv.status !== 'paid' && inv.status !== 'cancelled' && (
+                        <button onClick={() => markPaidMutation.mutate(inv.id)} className="text-xs font-medium text-brand-600 hover:underline">Marquer payée</button>
+                      )}
+                      {inv.status !== 'cancelled' && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Annuler cette facture ? Elle restera visible mais marquée comme annulée.')) {
+                              cancelInvoiceMutation.mutate(inv.id)
+                            }
+                          }}
+                          className="text-xs font-medium text-red-600 hover:underline"
+                        >
+                          Annuler
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -185,16 +244,49 @@ export default function FinancePage() {
           {loadingExpenses ? <p className="p-5 text-sm text-slate-500">Chargement…</p> : expenses && expenses.length > 0 ? (
             <table className="w-full text-sm">
               <thead><tr className="border-b border-slate-100 text-left text-xs uppercase text-slate-400">
-                <th className="px-5 py-2">Catégorie</th><th className="px-5 py-2">Description</th><th className="px-5 py-2">Montant</th><th className="px-5 py-2">Date</th>
+                <th className="px-5 py-2">Catégorie</th><th className="px-5 py-2">Description</th><th className="px-5 py-2">Montant</th><th className="px-5 py-2">Date</th><th className="px-5 py-2 text-right">Actions</th>
               </tr></thead>
               <tbody>
                 {expenses.map((e) => (
-                  <tr key={e.id} className="border-b border-slate-50">
-                    <td className="px-5 py-3">{e.category}</td>
-                    <td className="px-5 py-3 text-slate-500">{e.description ?? '—'}</td>
-                    <td className="px-5 py-3">{e.amount.toLocaleString('fr-FR')} €</td>
-                    <td className="px-5 py-3 text-slate-500">{e.expense_date}</td>
-                  </tr>
+                  editingExpenseId === e.id ? (
+                    <tr key={e.id} className="border-b border-slate-50 bg-slate-50">
+                      <td className="px-5 py-3">
+                        <input value={editExpenseForm.category} onChange={(ev) => setEditExpenseForm({ ...editExpenseForm, category: ev.target.value })} className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm" />
+                      </td>
+                      <td className="px-5 py-3">
+                        <input value={editExpenseForm.description} onChange={(ev) => setEditExpenseForm({ ...editExpenseForm, description: ev.target.value })} className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm" />
+                      </td>
+                      <td className="px-5 py-3">
+                        <input value={editExpenseForm.amount} onChange={(ev) => setEditExpenseForm({ ...editExpenseForm, amount: ev.target.value })} className="w-24 rounded-md border border-slate-300 px-2 py-1 text-sm" />
+                      </td>
+                      <td className="px-5 py-3">
+                        <input type="date" value={editExpenseForm.expense_date} onChange={(ev) => setEditExpenseForm({ ...editExpenseForm, expense_date: ev.target.value })} className="rounded-md border border-slate-300 px-2 py-1 text-sm" />
+                      </td>
+                      <td className="px-5 py-3 text-right space-x-3">
+                        <button
+                          disabled={updateExpenseMutation.isPending}
+                          onClick={() => updateExpenseMutation.mutate(e.id)}
+                          className="text-xs font-medium text-emerald-600 hover:underline"
+                        >
+                          Enregistrer
+                        </button>
+                        <button onClick={() => setEditingExpenseId(null)} className="text-xs font-medium text-slate-500 hover:underline">
+                          Annuler
+                        </button>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={e.id} className="border-b border-slate-50">
+                      <td className="px-5 py-3">{e.category}</td>
+                      <td className="px-5 py-3 text-slate-500">{e.description ?? '—'}</td>
+                      <td className="px-5 py-3">{e.amount.toLocaleString('fr-FR')} €</td>
+                      <td className="px-5 py-3 text-slate-500">{e.expense_date}</td>
+                      <td className="px-5 py-3 text-right space-x-3">
+                        <button onClick={() => startEditExpense(e)} className="text-xs font-medium text-brand-600 hover:underline">Modifier</button>
+                        <button onClick={() => confirmDeleteExpense(e.id)} className="text-xs font-medium text-red-600 hover:underline">Supprimer</button>
+                      </td>
+                    </tr>
+                  )
                 ))}
               </tbody>
             </table>

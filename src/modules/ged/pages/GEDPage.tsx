@@ -19,6 +19,9 @@ export default function GEDPage() {
   const [projectId, setProjectId] = useState('')
   const [clientId, setClientId] = useState('')
   const [newCategoryName, setNewCategoryName] = useState('')
+  const [showCategoryManager, setShowCategoryManager] = useState(false)
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null)
+  const [editingCategoryName, setEditingCategoryName] = useState('')
 
   const { data: documents, isLoading } = useQuery({
     queryKey: ['ged', 'documents', search, favoritesOnly, categoryId],
@@ -61,6 +64,22 @@ export default function GEDPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ged', 'categories'] })
       setNewCategoryName('')
+    },
+  })
+
+    const updateCategoryMutation = useMutation({
+    mutationFn: (id: number) => gedApi.updateCategory(id, editingCategoryName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ged', 'categories'] })
+      setEditingCategoryId(null)
+    },
+  })
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (id: number) => gedApi.deleteCategory(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ged', 'categories'] }),
+    onError: (error: any) => {
+      window.alert(error?.response?.data?.message || "Impossible de supprimer cette catégorie.")
     },
   })
 
@@ -122,14 +141,66 @@ export default function GEDPage() {
             placeholder="Nouvelle catégorie…"
             className="rounded-md border border-slate-300 px-2 py-2 text-xs"
           />
-          <button
+                    <button
             disabled={!newCategoryName || createCategoryMutation.isPending}
             onClick={() => createCategoryMutation.mutate()}
             className="rounded-md border border-slate-300 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
             + Catégorie
           </button>
+          <button
+            onClick={() => setShowCategoryManager((v) => !v)}
+            className="text-xs text-slate-500 hover:underline"
+          >
+            Gérer les catégories
+          </button>
         </div>
+
+        {showCategoryManager && (
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+            <ul className="space-y-1">
+              {categories?.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-2 text-xs">
+                  {editingCategoryId === c.id ? (
+                    <>
+                      <input
+                        value={editingCategoryName}
+                        onChange={(e) => setEditingCategoryName(e.target.value)}
+                        className="flex-1 rounded-md border border-slate-300 px-2 py-1 text-xs"
+                      />
+                      <button onClick={() => updateCategoryMutation.mutate(c.id)} className="font-medium text-emerald-600 hover:underline">
+                        OK
+                      </button>
+                      <button onClick={() => setEditingCategoryId(null)} className="text-slate-500 hover:underline">
+                        Annuler
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-slate-700">{c.name}</span>
+                      <div className="flex gap-2">
+                        <button onClick={() => { setEditingCategoryId(c.id); setEditingCategoryName(c.name) }} className="text-brand-600 hover:underline">
+                          Modifier
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Supprimer la catégorie "${c.name}" ? Cette action est irréversible.`)) {
+                              deleteCategoryMutation.mutate(c.id)
+                            }
+                          }}
+                          className="text-red-600 hover:underline"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </li>
+              ))}
+              {categories?.length === 0 && <li className="text-slate-400">Aucune catégorie.</li>}
+            </ul>
+          </div>
+        )}
 
         {uploadMutation.isError && (
           <p className="text-sm text-red-600">

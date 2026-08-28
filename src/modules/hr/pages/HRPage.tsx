@@ -22,6 +22,10 @@ export default function HRPage() {
     first_name: '', last_name: '', email: '', phone: '', position: '', department: '', user_id: '',
   })
   const [skillToAdd, setSkillToAdd] = useState({ skill_id: '', level: '3' })
+  const [showSkillManager, setShowSkillManager] = useState(false)
+  const [newSkillName, setNewSkillName] = useState('')
+  const [editingSkillId, setEditingSkillId] = useState<number | null>(null)
+  const [editingSkillName, setEditingSkillName] = useState('')
   const [objectiveForm, setObjectiveForm] = useState({ title: '', target_date: '' })
   const [kpiForm, setKpiForm] = useState({ name: '', target_value: '', actual_value: '', unit: '', period: 'month', period_date: '' })
 
@@ -73,6 +77,30 @@ export default function HRPage() {
     onSuccess: () => {
       invalidateDetail()
       setSkillToAdd({ skill_id: '', level: '3' })
+    },
+  })
+
+    const createSkillMutation = useMutation({
+    mutationFn: () => hrApi.createSkill({ name: newSkillName }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'skills'] })
+      setNewSkillName('')
+    },
+  })
+
+  const updateSkillMutation = useMutation({
+    mutationFn: (id: number) => hrApi.updateSkill(id, { name: editingSkillName }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr', 'skills'] })
+      setEditingSkillId(null)
+    },
+  })
+
+  const deleteSkillMutation = useMutation({
+    mutationFn: (id: number) => hrApi.deleteSkill(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['hr', 'skills'] }),
+    onError: (error: any) => {
+      window.alert(error?.response?.data?.message || "Impossible de supprimer cette compétence.")
     },
   })
 
@@ -170,7 +198,7 @@ export default function HRPage() {
                 <p className="text-sm text-slate-500">{detail.email}</p>
               </div>
 
-              <div>
+                            <div>
                 <h3 className="mb-2 text-sm font-semibold text-slate-700">Compétences</h3>
                 <div className="mb-2 flex flex-wrap gap-1">
                   {detail.skills?.map((s) => (
@@ -194,7 +222,73 @@ export default function HRPage() {
                   >
                     Ajouter
                   </button>
+                  <button
+                    onClick={() => setShowSkillManager((v) => !v)}
+                    className="text-xs text-slate-500 hover:underline"
+                  >
+                    Gérer le catalogue
+                  </button>
                 </div>
+
+                {showSkillManager && (
+                  <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+                    <div className="flex gap-2">
+                      <input
+                        value={newSkillName}
+                        onChange={(e) => setNewSkillName(e.target.value)}
+                        placeholder="Nouvelle compétence…"
+                        className="flex-1 rounded-md border border-slate-300 px-2 py-1 text-xs"
+                      />
+                      <button
+                        disabled={!newSkillName || createSkillMutation.isPending}
+                        onClick={() => createSkillMutation.mutate()}
+                        className="rounded-md bg-brand-600 px-3 py-1 text-xs text-white hover:bg-brand-700 disabled:opacity-50"
+                      >
+                        Créer
+                      </button>
+                    </div>
+                    <ul className="mt-2 space-y-1">
+                      {skillsList?.map((s) => (
+                        <li key={s.id} className="flex items-center justify-between gap-2 text-xs">
+                          {editingSkillId === s.id ? (
+                            <>
+                              <input
+                                value={editingSkillName}
+                                onChange={(e) => setEditingSkillName(e.target.value)}
+                                className="flex-1 rounded-md border border-slate-300 px-2 py-1 text-xs"
+                              />
+                              <button onClick={() => updateSkillMutation.mutate(s.id)} className="font-medium text-emerald-600 hover:underline">
+                                OK
+                              </button>
+                              <button onClick={() => setEditingSkillId(null)} className="text-slate-500 hover:underline">
+                                Annuler
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-slate-700">{s.name}</span>
+                              <div className="flex gap-2">
+                                <button onClick={() => { setEditingSkillId(s.id); setEditingSkillName(s.name) }} className="text-brand-600 hover:underline">
+                                  Modifier
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm(`Supprimer la compétence "${s.name}" ? Cette action est irréversible.`)) {
+                                      deleteSkillMutation.mutate(s.id)
+                                    }
+                                  }}
+                                  className="text-red-600 hover:underline"
+                                >
+                                  Supprimer
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               <div>
